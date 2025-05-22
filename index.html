@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Photo Editor App</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+      background-color: white;
+      color: black;
+      transition: 0.3s;
+      position: relative;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    body.dark {
+      background-color: #1e1e1e;
+      color: white;
+    }
+    h1 {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    #toggleThemeBtn {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 6px 14px;
+      background: #555;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      z-index: 1000;
+      transition: background-color 0.3s;
+    }
+    #toggleThemeBtn:hover {
+      background: #333;
+    }
+    #preview {
+      max-width: 100%;
+      max-height: 450px;
+      margin-top: 10px;
+      border: 2px solid #ccc;
+      border-radius: 12px;
+      object-fit: contain;
+      background-color: #f0f0f0;
+    }
+    .controls {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      max-width: 900px;
+      justify-content: center;
+    }
+    .btn {
+      padding: 10px 16px;
+      cursor: pointer;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      font-weight: bold;
+      transition: 0.2s;
+      min-width: 100px;
+      text-align: center;
+      user-select: none;
+    }
+    .btn:hover {
+      opacity: 0.85;
+      transform: scale(1.05);
+    }
+    .resize { background-color: #007bff; }
+    .compress { background-color: #6c757d; }
+    .upscale { background-color: #17a2b8; }
+    .grayscale { background-color: #343a40; }
+    .sepia { background-color: #a0522d; }
+    .contrast { background-color: #ffc107; color: black; }
+    .clear { background-color: #fd7e14; }
+    .border { background-color: #dc3545; }
+    .download { background-color: #28a745; }
+    .rotate { background-color: #6610f2; }
+    .crop { background-color: #20c997; }
+    .text { background-color: #9c27b0; }
+    .undo { background-color: #607d8b; }
+    .redo { background-color: #795548; }
+    .upload-area {
+      border: 2px dashed #aaa;
+      padding: 30px;
+      text-align: center;
+      margin-top: 10px;
+      cursor: pointer;
+      border-radius: 10px;
+      background-color: #f9f9f9;
+      transition: background-color 0.2s;
+      max-width: 900px;
+      width: 100%;
+      box-sizing: border-box;
+      user-select: none;
+    }
+    .upload-area.dragover {
+      background-color: #d1ecf1;
+      border-color: #0c5460;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    #sizeDisplay {
+      margin-top: 10px;
+      font-size: 14px;
+      font-style: italic;
+      max-width: 900px;
+      width: 100%;
+      text-align: center;
+      user-select: none;
+    }
+    .slider-container {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 900px;
+      width: 100%;
+      user-select: none;
+    }
+    label {
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    Photo Editor
+  </h1>
+  <button id="toggleThemeBtn" onclick="toggleTheme()">Dark Mode</button>
+
+  <label class="upload-area" id="uploadArea" for="fileInput">
+    Click or Drag & Drop images anywhere to upload
+  </label>
+  <input type="file" id="fileInput" accept="image/*" multiple />
+
+  <canvas id="canvas" style="display:none;"></canvas>
+  <img id="preview" src="" alt="Preview" />
+  <div id="sizeDisplay"></div>
+
+  <div class="controls">
+    <button class="btn resize" onclick="resizeImage(500, 500)">Resize to 500x500</button>
+    <button class="btn compress" onclick="resizeImage(100, 100)">Compress (100x100)</button>
+    <button class="btn upscale" onclick="resizeImage(2000, 2000)">Upscale (2000x2000)</button>
+    <button class="btn grayscale" onclick="applyFilter('grayscale(100%)')">Grayscale</button>
+    <button class="btn sepia" onclick="applyFilter('sepia(100%)')">Sepia</button>
+    <button class="btn contrast" onclick="applyFilter('contrast(150%)')">Contrast</button>
+    <button class="btn clear" onclick="clearFilter()">Clear Filters</button>
+    <button class="btn border" onclick="addBorder()">Add Border</button>
+    <button class="btn rotate" onclick="rotateImage()">Rotate</button>
+    <button class="btn crop" onclick="cropImage()">Crop</button>
+    <button class="btn text" onclick="addText()">Add Text</button>
+    <button class="btn undo" onclick="undoEdit()">Undo</button>
+    <button class="btn redo" onclick="redoEdit()">Redo</button>
+    <button class="btn download" onclick="downloadImage()">Download</button>
+  </div>
+
+  <div class="slider-container">
+    <label>Hue Rotation: <input type="range" min="0" max="360" value="0" id="hueSlider" /></label>
+    <label>Saturation: <input type="range" min="0" max="200" value="100" id="saturationSlider" /></label>
+    <label>Brightness: <input type="range" min="0" max="200" value="100" id="brightnessSlider" /></label>
+  </div>
+
+  <script>
+    const preview = document.getElementById('preview');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const hueSlider = document.getElementById('hueSlider');
+    const saturationSlider = document.getElementById('saturationSlider');
+    const brightnessSlider = document.getElementById('brightnessSlider');
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const sizeDisplay = document.getElementById('sizeDisplay');
+
+    let originalImage = null;
+    let currentRotation = 0;
+    let filterStyle = '';
+    let borderAdded = false;
+
+    // Undo/Redo stacks
+    let undoStack = [];
+    let redoStack = [];
+
+    function pushState() {
+      if (!preview.src) return;
+      // Save current preview src and filters
+      undoStack.push({
+        imageDataUrl: preview.src,
+        rotation: currentRotation,
+        filter: filterStyle,
+        border: borderAdded
+      });
+      if (undoStack.length > 20) undoStack.shift();
+      redoStack = [];
+    }
+
+    function undoEdit() {
+      if (undoStack.length === 0) return;
+      const state = undoStack.pop();
+      redoStack.push({
+        imageDataUrl: preview.src,
+        rotation: currentRotation,
+        filter: filterStyle,
+        border: borderAdded
+      });
+      applyState(state);
+    }
+
+    function redoEdit() {
+      if (redoStack.length === 0) return;
+      const state = redoStack.pop();
+      undoStack.push({
+        imageDataUrl: preview.src,
+        rotation: currentRotation,
+        filter: filterStyle,
+        border: borderAdded
+      });
+      applyState(state);
+    }
+
+    function applyState(state) {
+      preview.src = state.imageDataUrl;
+      currentRotation = state.rotation;
+      filterStyle = state.filter;
+      borderAdded = state.border;
+      preview.style.filter = filterStyle;
+      if (borderAdded) {
+        preview.style.border = '10px solid red';
+      } else {
+        preview.style.border = 'none';
+      }
+      updateSizeDisplay();
+    }
+
+    function loadImageFromFile(file) {
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        originalImage = new Image();
+        originalImage.onload = function () {
+          preview.src = e.target.result;
+          currentRotation = 0;
+          filterStyle = '';
+          borderAdded = false;
+          preview.style.filter = '';
+          preview.style.border = 'none';
+          undoStack = [];
+          redoStack = [];
+          updateSizeDisplay();
+          resetSliders();
+          pushState();
+        };
+        originalImage.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) {
+        loadImageFromFile(e.target.files[0]);
+      }
+    });
+
+    uploadArea.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        loadImageFromFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    function updateSizeDisplay() {
+      const src = preview.src;
+      if (!src) {
+        sizeDisplay.textContent = '';
+        return;
+      }
+      let size = 0;
+      try {
+        const base64String = src.split(',')[1];
+        size = Math.round((base64String.length * 3) / 4);
+      } catch {
+        size = 0;
+      }
+      const kb = (size / 1024).toFixed(2);
+      sizeDisplay.textContent = `Approx. file size: ${kb} KB`;
+    }
+
+    function resizeImage(width, height) {
+      if (!preview.src) {
+        alert("Please upload an image first.");
+        return;
+      }
+      pushState();
+
+      const img = new Image();
+      img.onload = function () {
+        canvas.width = width;
+        canvas.height = height;
+        ctx.clearRect(0, 0, width, height);
+
+        let newWidth = width;
+        let newHeight = height;
+        const aspectRatio = img.width / img.height;
+
+        if (width / height > aspectRatio) {
+          newWidth = height * aspectRatio;
+        } else {
+          newHeight = width / aspectRatio;
+        }
+
+        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, newWidth, newHeight);
+
+        preview.src = canvas.toDataURL('image/png');
+        updateSizeDisplay();
+      };
+      img.src = preview.src;
+    }
+
+    function applyFilter(filter) {
+      if (!preview.src) {
+        alert("Please upload an image first.");
+        return;
+      }
+      pushState();
+      filterStyle = filter;
+      preview.style.filter = filterStyle;
+    }
+
+    function clearFilter() {
+      if (!preview.src) {
+        alert("Please upload an image first.");
+        return;
+      }
+      pushState();
+      filterStyle = '';
+      preview.style.filter = '';
+    }
+
+    function addBorder() {
+      if (!preview.src) {
+        alert("Please upload an image first.");
+        return;
+      }
+      pushState();
+      borderAdded = !borderAdded;
+      preview.style.border = borderAdded ? '10px solid red' : 'none';
+    }
+
+    function rotateImage() {
+      if (!preview.src) {
+        alert("Please upload an image first.");
+        return;
+      }
+      pushState();
+
+      currentRotation = (currentRotation + 90) % 360;
+
+      const img = new Image();
+      img.onload = function () {
+        if (currentRotation % 180 === 0) {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        } else {
+          canvas.width = img.height;
+          canvas.height = img.width;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((currentRotation * Math.PI) / 180);
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        ctx.restore();
+
+        preview.src = canvas.toDataURL('image/png');
+        updateSizeDisplay();
+      };
+      img.src = preview.src;
+    }
+
+    function cropImage() {
+      if (!preview.src) {
+        alert("Please upload an image first.");
+        return;
+      }
+      pushState();
+      const img = new Image();
+      img.onload = function () {
+        const side = Math.min(img.width, img.height);
+        const startX = (img.width - side) / 2;
+        const startY = (img.height - side) / 2;
+        canvas.width = side;
+        canvas.height = side;
+        ctx.clearRect(0, 0, side, side);
+        ctx.drawImage(img, startX, startY, side, side, 0, 0, side, side);
+        preview.src = canvas.toDataURL('image/png');
+        updateSizeDisplay();
+      };
+      img.src = preview.src;
+    }
+
+    function addText() {
+      if (!preview.src) {
+        alert("Please upload an image first.");
+        return;
+      }
+      const text = prompt("Enter text to add:");
+      if (!text) return;
+      pushState();
+      const img = new Image();
+      img.onload = function () {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+
+        ctx.font = '48px Arial';
+        ctx.fillStyle = 'white';
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        ctx.strokeText(text, canvas.width / 2, canvas.height / 2);
+        ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+
+        preview.src = canvas.toDataURL('image/png');
+        updateSizeDisplay();
+      };
+      img.src = preview.src;
+    }
+
+    function downloadImage() {
+      if (!preview.src) {
+        alert("Please upload an image first.");
+        return;
+      }
+      const link = document.createElement('a');
+      link.download = 'edited-image.png';
+      link.href = preview.src;
+      link.click();
+    }
+
+    function toggleTheme() {
+      const body = document.body;
+      body.classList.toggle('dark');
+      const btn = document.getElementById('toggleThemeBtn');
+      btn.textContent = body.classList.contains('dark') ? 'Light Mode' : 'Dark Mode';
+    }
+
+    function updateSliders() {
+      if (!preview.src) return;
+      pushState();
+
+      let hue = hueSlider.value;
+      let saturation = saturationSlider.value;
+      let brightness = brightnessSlider.value;
+
+      filterStyle = `hue-rotate(${hue}deg) saturate(${saturation}%) brightness(${brightness}%)`;
+      preview.style.filter = filterStyle;
+    }
+
+    hueSlider.addEventListener('input', updateSliders);
+    saturationSlider.addEventListener('input', updateSliders);
+    brightnessSlider.addEventListener('input', updateSliders);
+
+    function resetSliders() {
+      hueSlider.value = 0;
+      saturationSlider.value = 100;
+      brightnessSlider.value = 100;
+    }
+  </script>
+</body>
+</html>
